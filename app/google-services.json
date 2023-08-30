@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "966218041195",
+    "project_id": "medidor-e4f7f",
+    "storage_bucket": "medidor-e4f7f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:966218041195:android:ee166b6d98ce8891ecae2e",
+        "android_client_info": {
+          "package_name": "com.example.medidor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "966218041195-bbit4qtrrb9tkntlhjue57212vun4fgs.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZiaqhxC-Sld5g8A6kWxU0hEnhlvCFHc4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "966218041195-bbit4qtrrb9tkntlhjue57212vun4fgs.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

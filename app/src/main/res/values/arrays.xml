@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="unidades" >
+        <item>Bernabeus</item>
+        <item>Piscinas olimpicas</item>
+        <item>m2</item>
+        <item>Km2</item>
+
+    </string-array>
+</resources>
