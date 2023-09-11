@@ -5,7 +5,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
 
     android:layout_margin="1dp"
-    app:cardCornerRadius="10dp"
+    app:cardCornerRadius="15dp"
     android:backgroundTint="@color/white"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
@@ -48,5 +48,14 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@+id/tituloDistCard"
             app:srcCompat="@drawable/bernabeu" />
+        <ImageView
+            android:id="@+id/selecteddistimage"
+            android:layout_width="20dp"
+            android:layout_height="0dp"
+            android:layout_marginEnd="16dp"
+            app:layout_constraintBottom_toBottomOf="@+id/descripcionDistCard"
+            app:layout_constraintEnd_toStartOf="@+id/iconoDistCard"
+            app:layout_constraintTop_toTopOf="@+id/tituloDistCard"
+            app:srcCompat="@drawable/check_mark_off" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.cardview.widget.CardView>

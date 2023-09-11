@@ -79,18 +79,6 @@ class MainActivity : AppCompatActivity() , OnMapReadyCallback {
             }
 
         }
-  //Adaptador para el spinner
-        ArrayAdapter.createFromResource(
-            this,
-            R.array.unidades,
-            com.bumptech.glide.R.layout.support_simple_spinner_dropdown_item
-        ).also { adapter ->
-            // Specify the layout to use when the list of choices appears
-            adapter.setDropDownViewResource(com.google.maps.android.R.layout.support_simple_spinner_dropdown_item)
-            // Apply the adapter to the spinner
-
-            spinner.adapter = adapter
-        }
         // Cambiar cosas cuando  se selecciona
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
            override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
@@ -214,18 +202,6 @@ class MainActivity : AppCompatActivity() , OnMapReadyCallback {
             .image(image)
             .position(location, 204F, 217.7F) // Define la posición y el tamaño del GroundOverlay
             .transparency(0.2f) // Define la transparencia (0f para completamente opaco, 1f para completamente transparente)
-
-        when(fase){
-            1 -> {
-                image = BitmapDescriptorFactory.fromResource(R.drawable.piscina)
-                overlayOptions=GroundOverlayOptions()
-                    .image(image)
-                    .position(location, 21F, 50F) // Define la posición y el tamaño del GroundOverlay
-                    .transparency(0.2f) // Define la transparencia (0f para completamente opaco, 1f para completamente transparente)
-
-            }
-
-        }
         return overlayOptions
     }
 
@@ -233,13 +209,10 @@ class MainActivity : AppCompatActivity() , OnMapReadyCallback {
         private val iconImageView: ImageView = itemView.findViewById(R.id.iconoDistCard)
         private val tituloView: TextView = itemView.findViewById(R.id.tituloDistCard)
         private val dimensionesTextView: TextView = itemView.findViewById(R.id.descripcionDistCard)
-
         fun bind(data: ObjetoSuperficie) {
             tituloView.text = data.nombre
             dimensionesTextView.text = data.alto.toString()+" x "+data.ancho.toString()
-
-            // Carga la imagen de icono utilizando Glide (o Picasso)
-            Glide.with(itemView.context)
+            Glide.with(itemView.context)// Carga la imagen de icono utilizando Glide (o Picasso)
                 .load(data.imagenURL)
                 .into(iconImageView)
 

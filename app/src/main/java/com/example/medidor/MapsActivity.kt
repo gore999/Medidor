@@ -2,12 +2,16 @@ package com.example.medidor
 
 import android.Manifest
 import android.content.ContentValues.TAG
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.location.Location
+import android.os.Build.VERSION_CODES.R
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -15,10 +19,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.view.menu.MenuView.ItemView
+import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -37,6 +44,8 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.Dash
+import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.GroundOverlay
 import com.google.android.gms.maps.model.GroundOverlayOptions
 import com.google.android.gms.maps.model.LatLngBounds
@@ -53,7 +62,9 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.ktx.Firebase
 import com.google.maps.android.SphericalUtil
-
+import com.google.maps.android.ui.IconGenerator
+import java.util.Arrays
+import kotlinx.coroutines.*
 class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
     private val PERMISSION_REQUEST_CODE = 123
     private val TOGGLE_MODE_SUPF=0
@@ -61,12 +72,12 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
     private var toggle_mode=TOGGLE_MODE_SUPF
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var map: GoogleMap
-    lateinit var spinner: Spinner
+
     lateinit var texto: TextView
     lateinit var floatingActionButton: FloatingActionButton
     lateinit var togle_mode_button: Button
     val polygonOptions = PolygonOptions().fillColor(0x800000ff.toInt())
-    val polylineOptions = PolylineOptions()
+    val polylineOptions = PolylineOptions().zIndex(1.0f)
     var poligono: Polygon?=null
     var polyline: Polyline?=null
     var faseTipoMapa=0
@@ -75,9 +86,10 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapterSuperficie: FirestoreRecyclerAdapter<ObjetoSuperficie, ObjetoSuperficieViewHolder>
     private lateinit var adapterDist: FirestoreRecyclerAdapter<ObjetoDistancia, ObjetoDistViewHolder>
-    lateinit var objetoSuperficie: ObjetoSuperficie
-    lateinit var objetoDistancia: ObjetoDistancia
-    val db = Firebase.firestore
+    var objetoSuperficie: ObjetoSuperficie?=null
+    var objetoDistancia: ObjetoDistancia?=null
+    var tipoMapa=GoogleMap.MAP_TYPE_NORMAL
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
@@ -85,18 +97,20 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         val botonActividad= findViewById<MaterialButton>(R.id.datosMatButtonMaps)
         texto=findViewById(R.id.datosMedicionTextView)
         floatingActionButton=findViewById(R.id.boton_flotante)
-        recuperaBernabeu()
         togle_mode_button=findViewById<Button>(R.id.toggle_mode_button)
         togle_mode_button.setOnClickListener {
             if(toggle_mode==TOGGLE_MODE_SUPF){//Si está en modo superficie, cambiamos el recycler y el boton a distancia
                 recyclerView.adapter=adapterDist
                 togle_mode_button.setText("Dist")
                 toggle_mode=TOGGLE_MODE_DIST
+                borradoPuntosyDatos()
             }
            else{//viceversa
+
                 recyclerView.adapter=adapterSuperficie
                 togle_mode_button.setText("Supf")
                 toggle_mode=TOGGLE_MODE_SUPF
+                borradoPuntosyDatos()
             }
         }
 
@@ -125,33 +139,53 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         }
         //Añadir accion al boton de borrado
         boton.setOnClickListener {
-            //eliminar puntos
-            polygonOptions.points.clear()
-            polylineOptions.points.clear()
-            //limpiar mapa de imagenes, puntos y lineas.
-            map.clear()
-            //limpiar lista de objetos que hacen referencia a las imagenes sobre el mapa.
-            listaOverlays.clear()
-            overlayToRemove==null
-            poligono=null
-            polyline=null
+            borradoPuntosyDatos()
+        }
+        //Cambiode activity:
+        botonActividad.setOnClickListener {
+            var intent= Intent(this,DatosActivity::class.java)
+            startActivity(intent)
         }
         createMapFragment()
     }
 
+
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
-        map.mapType=GoogleMap.MAP_TYPE_NORMAL
+        map.mapType=tipoMapa
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return
+        }
+
+        map.isMyLocationEnabled=true
+
         //Accion Float button: Cambiar mapa
         floatingActionButton.setOnClickListener{
             faseTipoMapa++
             if(faseTipoMapa==4){faseTipoMapa=0 }
             when(faseTipoMapa) {
-                0->map.mapType = GoogleMap.MAP_TYPE_NORMAL
-                1->map.mapType = GoogleMap.MAP_TYPE_HYBRID
-                2->map.mapType = GoogleMap.MAP_TYPE_TERRAIN
-                3->map.mapType = GoogleMap.MAP_TYPE_SATELLITE
+                0->tipoMapa = GoogleMap.MAP_TYPE_NORMAL
+                1->tipoMapa = GoogleMap.MAP_TYPE_HYBRID
+                2->tipoMapa= GoogleMap.MAP_TYPE_TERRAIN
+                3->tipoMapa= GoogleMap.MAP_TYPE_SATELLITE
             }
+            map.mapType=tipoMapa
+            map.isBuildingsEnabled=true
+            map.isIndoorEnabled=true
         }
         //ACCIONES SOBRE EL MAPA
         //Click largo OVERLAYS
@@ -180,21 +214,31 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         //CLICK CORTO: dibujo de poligonos o lineas.
         map.setOnMapClickListener {
             if (toggle_mode == TOGGLE_MODE_SUPF) {
-                map.addMarker(MarkerOptions().draggable(true).position(it))
-                polygonOptions.add(it)
-                if (polygonOptions.points.size > 2) {
-                    if (poligono != null) {
-                        poligono!!.remove()
+                if(objetoSuperficie!=null){
+                    map.addMarker(MarkerOptions().draggable(true).position(it))
+                    polygonOptions.add(it)
+                    if (polygonOptions.points.size > 2) {
+                        if (poligono != null) {
+                            poligono!!.remove()
+                        }
+                        poligono = map.addPolygon(polygonOptions)
+                        actualizarObjetoSuperficie(objetoSuperficie!!)
                     }
-                    poligono = map.addPolygon(polygonOptions)
-                    actualizarObjetoSuperficie(objetoSuperficie)
+                }else{
+                    Toast.makeText(this,"Seleccione una opcion",Toast.LENGTH_SHORT).show()
                 }
             }
             if(toggle_mode==TOGGLE_MODE_DIST){
-                map.addMarker(MarkerOptions().draggable(true).position(it))
-                polylineOptions.add(it).pattern
-                polyline=map.addPolyline(polylineOptions)
-                actualizarObjetoDistancia(objetoDistancia)
+                if(objetoDistancia!=null){
+                    map.addMarker(MarkerOptions().draggable(true).position(it))
+                    polylineOptions.add(it)
+                    polyline=map.addPolyline(polylineOptions)
+                    actualizarObjetoDistancia(objetoDistancia!!)
+                    patron(polylineOptions)
+                }
+               else{
+                   Toast.makeText(this,"Seleccione una opcion",Toast.LENGTH_SHORT).show()
+               }
             }
         }
     }
@@ -207,6 +251,24 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // Permiso concedido, realiza acciones relacionadas con la ubicación
+                if (ActivityCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    // TODO: Consider calling
+                    //    ActivityCompat#requestPermissions
+                    // here to request the missing permissions, and then overriding
+                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                    //                                          int[] grantResults)
+                    // to handle the case where the user grants the permission. See the documentation
+                    // for ActivityCompat#requestPermissions for more details.
+                    return
+                }
+                map.isMyLocationEnabled=true
             } else {
                 // Permiso denegado, toma medidas adecuadas (por ejemplo, informar al usuario)
             }
@@ -227,28 +289,6 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         return overlayLatLngBounds.contains(point)
     }
 
-
-    //Recuperar bernabeu al inicio de la aplicacion. Se selecciona por defecto.
-    private fun recuperaBernabeu(){
-        val collectionRef = FirebaseFirestore.getInstance().collection("obj_superficie")//Referencia a la coleccion
-        val query: Query = collectionRef.whereEqualTo(FieldPath.documentId(), "JJGdrNf0bi8OtvWJpGqG")//Referencia al tipo de objeto
-
-        query.get()//hacemos la query
-            .addOnSuccessListener { querySnapshot ->
-                if (!querySnapshot.isEmpty) {
-                    val documentSnapshot = querySnapshot.documents[0]
-                    objetoSuperficie = documentSnapshot.toObject(ObjetoSuperficie::class.java)!!
-                    if (objetoSuperficie != null) {
-                        // Aquí tienes el objeto obtenido
-                    }
-                } else {
-                    // No se encontraron documentos que cumplan el criterio de consulta
-                }
-            }
-            .addOnFailureListener { exception ->
-                // Manejar errores
-            }
-    }
     //actualiza los datos con el objeto que tengamos seleccionado.
     private fun actualizarObjetoSuperficie (obj_sup:ObjetoSuperficie){
         if(polygonOptions.points.size>2){
@@ -257,21 +297,22 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         }
     }
     private fun actualizarObjetoDistancia (obj_dist:ObjetoDistancia){
-        if(polygonOptions.points.size>1){
-            var distancia = SphericalUtil.computeLength(polygonOptions.points)
+        if(polylineOptions.points.size>1){
+            var distancia = SphericalUtil.computeLength(polylineOptions.points)
             texto.setText("%.2f".format(distancia/(obj_dist.valor))+" "+obj_dist.unidad)
         }
     }
     private fun addOverlay(latLng: LatLng){
         Glide.with(this)
-            .load(objetoSuperficie.imagenURL)
+            .load(objetoSuperficie!!.imagenURL)
             .into(object : CustomTarget<Drawable>() {
                 override fun onResourceReady(resource: Drawable, transition: Transition<in Drawable>?) {
                     // Aquí puedes configurar tu overlay de mapa usando la imagen cargada
                     val overlayImage = BitmapDescriptorFactory.fromBitmap(drawableToBitmap(resource)) //Necesitamos un bitmapdescriptor,no un bitmap.
                     var overlayOptions= GroundOverlayOptions()
                         .image(overlayImage)
-                        .position(latLng, objetoSuperficie.ancho.toFloat(), objetoSuperficie.alto.toFloat()) // Define la posición y el tamaño del GroundOverlay
+                        .bearing(map.cameraPosition.bearing)
+                        .position(latLng, objetoSuperficie!!.ancho.toFloat(), objetoSuperficie!!.alto.toFloat()) // Define la posición y el tamaño del GroundOverlay
                         .transparency(0.2f) // Define la transparencia (0f para completamente opaco, 1f para completamente transparente)
                     val overlay = map.addGroundOverlay(overlayOptions)
                     listaOverlays.add(overlay)
@@ -299,6 +340,7 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
             .setQuery(query, ObjetoSuperficie::class.java)
             .build()
         adapterSuperficie = object : FirestoreRecyclerAdapter<ObjetoSuperficie, ObjetoSuperficieViewHolder>(options) {
+            var selected=-1
             override fun onCreateViewHolder(
                 parent: ViewGroup,
                 viewType: Int
@@ -314,12 +356,19 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
                 model: ObjetoSuperficie
             ) {
                 holder.bind(model)
-                holder.itemView.setOnClickListener {
-                    val item =
-                        snapshots.getSnapshot(position).toObject(ObjetoSuperficie::class.java)
-                    objetoSuperficie = model
-                    actualizarObjetoSuperficie(objetoSuperficie)
+                if(position==selected){
+                    holder.itemView.findViewById<ImageView>(R.id.selectedimage).setImageDrawable(resources.getDrawable(R.drawable.check_mark_on))
+                }else{
+                    holder.itemView.findViewById<ImageView>(R.id.selectedimage).setImageDrawable(resources.getDrawable(R.drawable.check_mark_off))
                 }
+                holder.itemView.setOnClickListener {
+                    objetoSuperficie = model
+                    actualizarObjetoSuperficie(objetoSuperficie!!)
+                    it.findViewById<ImageView>(R.id.selectedimage).setImageDrawable(resources.getDrawable(R.drawable.check_mark_on))
+                    selected=position
+                    notifyDataSetChanged()
+                }
+
             }
         }
         recyclerView.adapter = adapterSuperficie
@@ -342,6 +391,7 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
             .build()
 
         adapterDist = object : FirestoreRecyclerAdapter<ObjetoDistancia, ObjetoDistViewHolder>(options) {
+            var selected=-1
             override fun onCreateViewHolder(
                 parent: ViewGroup,
                 viewType: Int
@@ -353,10 +403,18 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
 
             override fun onBindViewHolder(holder: ObjetoDistViewHolder, position: Int, model: ObjetoDistancia) {
                 holder.bind(model)
+                if(position==selected){
+                    holder.itemView.findViewById<ImageView>(R.id.selecteddistimage).setImageDrawable(resources.getDrawable(R.drawable.check_mark_on))
+                }else{
+                    holder.itemView.findViewById<ImageView>(R.id.selecteddistimage).setImageDrawable(resources.getDrawable(R.drawable.check_mark_off))
+                }
                 holder.itemView.setOnClickListener{
                     val item=snapshots.getSnapshot(position).toObject(ObjetoSuperficie::class.java)
                     objetoDistancia=model
-                    actualizarObjetoDistancia(objetoDistancia)
+                    actualizarObjetoDistancia(objetoDistancia!!)
+                    it.findViewById<ImageView>(R.id.selecteddistimage).setImageDrawable(resources.getDrawable(R.drawable.check_mark_on))
+                    selected=position
+                    notifyDataSetChanged()
                 }
             }
         }
@@ -373,16 +431,94 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
             Glide.with(imageView.context).load(data.imagenIcono).into(imageView)
         }
     }
+    private fun borradoPuntosyDatos() {
+        //eliminar puntos
+        polygonOptions.points.clear()
+        polylineOptions.points.clear()
+        //limpiar mapa de imagenes, puntos y lineas.
+        map.clear()
+        //limpiar lista de objetos que hacen referencia a las imagenes sobre el mapa.
+        listaOverlays.clear()
+        overlayToRemove == null
+        poligono = null;
+        polyline = null
+        texto.text = ""
+    }
+
     override fun onStart() {
         super.onStart()
         adapterSuperficie.startListening()
         adapterDist.startListening()
     }
-
     override fun onStop() {
         super.onStop()
         adapterSuperficie.stopListening()
         adapterDist.stopListening()
+    }
+
+    fun patron(polyline: PolylineOptions){
+        var points= polyline.points
+        if(points.size>1) {
+            Glide.with(this)
+                .load(objetoDistancia!!.imagenURL)
+                .into(object : CustomTarget<Drawable>() {
+                    override fun onResourceReady(
+                        resource: Drawable,
+                        transition: Transition<in Drawable>?
+                    ) {
+                        // Aquí puedes configurar tu overlay de mapa usando la imagen cargada
+                        val bitmap = drawableToBitmap(resource)
+                        val overlayImage =
+                            BitmapDescriptorFactory.fromBitmap(bitmap) //Necesitamos un bitmapdescriptor,no un bitmap.
+                        GlobalScope.launch(Dispatchers.IO) {
+                            for (i in points.size - 2 until points.size - 1) {
+                                val startPoint = points[i]
+                                val endPoint = points[i + 1]
+                                val distance =
+                                    SphericalUtil.computeDistanceBetween(startPoint, endPoint)
+                                val numImages = (distance / (objetoDistancia?.valor!!)).toInt()
+                                val deltaLat = (endPoint.latitude - startPoint.latitude) / numImages
+                                val deltaLng =
+                                    (endPoint.longitude - startPoint.longitude) / numImages
+
+                                for (j in 0 until numImages) {
+                                    val latLng = LatLng(
+                                        startPoint.latitude + j * deltaLat,
+                                        startPoint.longitude + j * deltaLng
+                                    )
+
+                                    val bearing = Math.toDegrees(
+                                        Math.atan2(
+                                            endPoint.longitude - startPoint.longitude,
+                                            endPoint.latitude - startPoint.latitude
+                                        )
+                                    ).toFloat()
+
+                                    val overlayOptions = GroundOverlayOptions()
+                                        .image(overlayImage)
+                                        .position(
+                                            latLng,
+                                            objetoDistancia!!.valor,
+                                            objetoDistancia!!.valor
+                                        )
+                                        .bearing(bearing)
+                                        .anchor(0.5f, 0.5f)
+                                        .zIndex(2.0f)
+
+                                    // Agrega el GroundOverlay en el hilo principal
+                                    withContext(Dispatchers.Main) {
+                                        val overlay = map.addGroundOverlay(overlayOptions)
+                                        listaOverlays.add(overlay)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    override fun onLoadCleared(placeholder: Drawable?) {
+                        // Manejo si la carga es cancelada o eliminada
+                    }
+                })
+        }
     }
 }
 
