@@ -1,31 +1,21 @@
 package com.example.medidor
 
 import android.Manifest
-import android.content.ContentValues.TAG
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.location.Location
-import android.os.Build.VERSION_CODES.R
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.view.menu.MenuView.ItemView
-import androidx.cardview.widget.CardView
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -35,36 +25,32 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.firebase.ui.firestore.FirestoreRecyclerAdapter
 import com.firebase.ui.firestore.FirestoreRecyclerOptions
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.android.gms.maps.model.Dash
-import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.GroundOverlay
 import com.google.android.gms.maps.model.GroundOverlayOptions
+import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.Polygon
 import com.google.android.gms.maps.model.PolygonOptions
 import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.firestore.ktx.toObject
-import com.google.firebase.ktx.Firebase
 import com.google.maps.android.SphericalUtil
-import com.google.maps.android.ui.IconGenerator
-import java.util.Arrays
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
 class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
     private val PERMISSION_REQUEST_CODE = 123
     private val TOGGLE_MODE_SUPF=0
@@ -72,15 +58,17 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
     private var toggle_mode=TOGGLE_MODE_SUPF
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var map: GoogleMap
-
     lateinit var texto: TextView
     lateinit var floatingActionButton: FloatingActionButton
+    lateinit var botonMyLocation: FloatingActionButton
+lateinit var pin: BitmapDescriptor
     lateinit var togle_mode_button: Button
     val polygonOptions = PolygonOptions().fillColor(0x800000ff.toInt())
     val polylineOptions = PolylineOptions().zIndex(1.0f)
     var poligono: Polygon?=null
     var polyline: Polyline?=null
     var faseTipoMapa=0
+    var numeroOverlays=0
     val listaOverlays= mutableListOf<GroundOverlay?>()
     var overlayToRemove: GroundOverlay?=null //Almacena el overlay a borrar cuando se detecta coincidencia.
     private lateinit var recyclerView: RecyclerView
@@ -89,12 +77,13 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
     var objetoSuperficie: ObjetoSuperficie?=null
     var objetoDistancia: ObjetoDistancia?=null
     var tipoMapa=GoogleMap.MAP_TYPE_NORMAL
-
+    private val LOCATION_PERMISSION_REQUEST_CODE = 1
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
         val boton= findViewById<Button>(R.id.botonborrar)
         val botonActividad= findViewById<MaterialButton>(R.id.datosMatButtonMaps)
+        pin=BitmapDescriptorFactory.fromResource(R.drawable.pin)
         texto=findViewById(R.id.datosMedicionTextView)
         floatingActionButton=findViewById(R.id.boton_flotante)
         togle_mode_button=findViewById<Button>(R.id.toggle_mode_button)
@@ -106,7 +95,6 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
                 borradoPuntosyDatos()
             }
            else{//viceversa
-
                 recyclerView.adapter=adapterSuperficie
                 togle_mode_button.setText("Supf")
                 toggle_mode=TOGGLE_MODE_SUPF
@@ -148,7 +136,16 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         }
         createMapFragment()
     }
-
+    private fun obtenerUbicacionYCentrarMapa() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                location?.let {
+                    val currentLatLng = LatLng(it.latitude, it.longitude)
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
+                }
+            }
+        }
+    }
 
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
@@ -161,17 +158,22 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
+            ActivityCompat.requestPermissions(this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), LOCATION_PERMISSION_REQUEST_CODE)
             return
+        }else{
+            botonMyLocation=findViewById(R.id.botonMyLocation)
+            map.getUiSettings().setMyLocationButtonEnabled(false)
+            map.isMyLocationEnabled=true
+            botonMyLocation.setOnClickListener{
+                fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                    location?.let {
+                        val currentLatLng = LatLng(it.latitude, it.longitude)
+                        map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
+                    }
+                }
+            }
         }
-
-        map.isMyLocationEnabled=true
 
         //Accion Float button: Cambiar mapa
         floatingActionButton.setOnClickListener{
@@ -190,37 +192,49 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         //ACCIONES SOBRE EL MAPA
         //Click largo OVERLAYS
         map.setOnMapLongClickListener {
-            if(listaOverlays.size==0){//Si la lista está vacia, simplemente añadimos el overlay.
-                addOverlay(it)}
-            else{//Si no está vacia
-                //VER SI YA HAY OVERLAY EN LA ZONA--> BORRARLO
-                for (gOverlay in listaOverlays) {
-                    if (gOverlay != null && isPointInOverlayBounds(it, gOverlay!!)) {// Verifica si el punto está dentro de las coordenadas del overlay
-                        overlayToRemove=gOverlay //Si está, lo dejamos para borrar una vez acabada la iteracion (si no, da error)
+            if(objetoSuperficie!=null) {
+                if (listaOverlays.size == 0) {//Si la lista está vacia, simplemente añadimos el overlay.
+
+
+                    addOverlay(it)
+                } else {//Si no está vacia
+                    //VER SI YA HAY OVERLAY EN LA ZONA--> BORRARLO
+                    for (gOverlay in listaOverlays) {
+                        if (gOverlay != null && isPointInOverlayBounds(
+                                it,
+                                gOverlay!!
+                            )
+                        ) {// Verifica si el punto está dentro de las coordenadas del overlay
+                            overlayToRemove =
+                                gOverlay //Si está, lo dejamos para borrar una vez acabada la iteracion (si no, da error)
+                        }
+                    }
+                    //ACABADA LA ITERACION:
+                    //Si hay algo para borrar, borramos, si no, añadimos el punto.
+                    if (overlayToRemove != null) {
+                        listaOverlays.remove(overlayToRemove)// Quitar de la lista
+                        overlayToRemove!!.remove()//eliminar
+                        overlayToRemove = null
+                    } else {
+                        addOverlay(it)
+                        overlayToRemove = null
                     }
                 }
-                //ACABADA LA ITERACION:
-                //Si hay algo para borrar, borramos, si no, añadimos el punto.
-                if(overlayToRemove!=null){
-                    listaOverlays.remove(overlayToRemove)// Quitar de la lista
-                    overlayToRemove!!.remove()//eliminar
-                    overlayToRemove=null
-                }else {
-                    addOverlay(it)
-                    overlayToRemove=null
-                }
+            }else{
+                Toast.makeText(this, "Seleccione una opción",Toast.LENGTH_SHORT).show()
             }
         }
         //CLICK CORTO: dibujo de poligonos o lineas.
         map.setOnMapClickListener {
             if (toggle_mode == TOGGLE_MODE_SUPF) {
                 if(objetoSuperficie!=null){
-                    map.addMarker(MarkerOptions().draggable(true).position(it))
+                    map.addMarker(MarkerOptions().draggable(true).position(it).icon(pin))
                     polygonOptions.add(it)
                     if (polygonOptions.points.size > 2) {
-                        if (poligono != null) {
+                       if (poligono != null) {
                             poligono!!.remove()
                         }
+
                         poligono = map.addPolygon(polygonOptions)
                         actualizarObjetoSuperficie(objetoSuperficie!!)
                     }
@@ -303,25 +317,38 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         }
     }
     private fun addOverlay(latLng: LatLng){
-        Glide.with(this)
-            .load(objetoSuperficie!!.imagenURL)
-            .into(object : CustomTarget<Drawable>() {
-                override fun onResourceReady(resource: Drawable, transition: Transition<in Drawable>?) {
-                    // Aquí puedes configurar tu overlay de mapa usando la imagen cargada
-                    val overlayImage = BitmapDescriptorFactory.fromBitmap(drawableToBitmap(resource)) //Necesitamos un bitmapdescriptor,no un bitmap.
-                    var overlayOptions= GroundOverlayOptions()
-                        .image(overlayImage)
-                        .bearing(map.cameraPosition.bearing)
-                        .position(latLng, objetoSuperficie!!.ancho.toFloat(), objetoSuperficie!!.alto.toFloat()) // Define la posición y el tamaño del GroundOverlay
-                        .transparency(0.2f) // Define la transparencia (0f para completamente opaco, 1f para completamente transparente)
-                    val overlay = map.addGroundOverlay(overlayOptions)
-                    listaOverlays.add(overlay)
-                }
+        if(numeroOverlays<=700) {
+            Glide.with(this)
+                .load(objetoSuperficie!!.imagenURL)
+                .into(object : CustomTarget<Drawable>() {
+                    override fun onResourceReady(
+                        resource: Drawable,
+                        transition: Transition<in Drawable>?
+                    ) {
+                        // Aquí puedes configurar tu overlay de mapa usando la imagen cargada
+                        val overlayImage =
+                            BitmapDescriptorFactory.fromBitmap(drawableToBitmap(resource)) //Necesitamos un bitmapdescriptor,no un bitmap.
+                        var overlayOptions = GroundOverlayOptions()
+                            .image(overlayImage)
+                            .bearing(map.cameraPosition.bearing)
+                            .position(
+                                latLng,
+                                objetoSuperficie!!.ancho.toFloat(),
+                                objetoSuperficie!!.alto.toFloat()
+                            ) // Define la posición y el tamaño del GroundOverlay
+                            .transparency(0.2f) // Define la transparencia (0f para completamente opaco, 1f para completamente transparente)
+                        val overlay = map.addGroundOverlay(overlayOptions)
+                        listaOverlays.add(overlay)
+                        numeroOverlays++
+                    }
 
-                override fun onLoadCleared(placeholder: Drawable?) {
-                    // Manejo si la carga es cancelada o eliminada
-                }
-            })
+                    override fun onLoadCleared(placeholder: Drawable?) {
+                        // Manejo si la carga es cancelada o eliminada
+                    }
+                })
+        }else{
+            Toast.makeText(this,"Numero de imagenes superado",Toast.LENGTH_SHORT).show()
+        }
     }
     //Convierte un objeto drawable en bitmap
     private fun drawableToBitmap(drawable: Drawable): Bitmap {
@@ -443,6 +470,7 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         poligono = null;
         polyline = null
         texto.text = ""
+        numeroOverlays=0
     }
 
     override fun onStart() {
@@ -482,33 +510,36 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
                                     (endPoint.longitude - startPoint.longitude) / numImages
 
                                 for (j in 0 until numImages) {
-                                    val latLng = LatLng(
-                                        startPoint.latitude + j * deltaLat,
-                                        startPoint.longitude + j * deltaLng
-                                    )
-
-                                    val bearing = Math.toDegrees(
-                                        Math.atan2(
-                                            endPoint.longitude - startPoint.longitude,
-                                            endPoint.latitude - startPoint.latitude
+                                    if (numeroOverlays <= 1000) {
+                                        numeroOverlays++
+                                        val latLng = LatLng(
+                                            startPoint.latitude + j * deltaLat,
+                                            startPoint.longitude + j * deltaLng
                                         )
-                                    ).toFloat()
 
-                                    val overlayOptions = GroundOverlayOptions()
-                                        .image(overlayImage)
-                                        .position(
-                                            latLng,
-                                            objetoDistancia!!.valor,
-                                            objetoDistancia!!.valor
-                                        )
-                                        .bearing(bearing)
-                                        .anchor(0.5f, 0.5f)
-                                        .zIndex(2.0f)
+                                        val bearing = Math.toDegrees(
+                                            Math.atan2(
+                                                endPoint.longitude - startPoint.longitude,
+                                                endPoint.latitude - startPoint.latitude
+                                            )
+                                        ).toFloat()
 
-                                    // Agrega el GroundOverlay en el hilo principal
-                                    withContext(Dispatchers.Main) {
-                                        val overlay = map.addGroundOverlay(overlayOptions)
-                                        listaOverlays.add(overlay)
+                                        val overlayOptions = GroundOverlayOptions()
+                                            .image(overlayImage)
+                                            .position(
+                                                latLng,
+                                                objetoDistancia!!.valor,
+                                                objetoDistancia!!.valor
+                                            )
+                                            .bearing(bearing)
+                                            .anchor(0.5f, 0.5f)
+                                            .zIndex(2.0f)
+
+                                        // Agrega el GroundOverlay en el hilo principal
+                                        withContext(Dispatchers.Main) {
+                                            val overlay = map.addGroundOverlay(overlayOptions)
+                                            listaOverlays.add(overlay)
+                                        }
                                     }
                                 }
                             }
@@ -519,6 +550,7 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
                     }
                 })
         }
+        if(numeroOverlays>1000)Toast.makeText(this,"Numero excedido",Toast.LENGTH_SHORT).show()
     }
 }
 
