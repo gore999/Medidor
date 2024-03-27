@@ -5,6 +5,8 @@
     android:id="@+id/layoutMapActivty"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:screenOrientation="portrait"
+
     tools:context=".MainActivity">
 
 
@@ -26,7 +28,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-
         android:text="Borrar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/boton_flotante" />
@@ -38,11 +39,9 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="24dp"
         android:clickable="true"
-        android:contentDescription="TODO"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:srcCompat="@android:drawable/ic_dialog_dialer" />
-
 
     <TextView
         android:id="@+id/datosMedicionTextView"
@@ -58,7 +57,7 @@
         android:textStyle="bold"
         app:layout_constraintEnd_toStartOf="@+id/toggle_mode_button"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/recyclrMaps" />
+        app:layout_constraintTop_toBottomOf="@+id/recyclerStatic" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/datosMatButtonMaps"
@@ -67,7 +66,7 @@
         android:text="datos"
         app:layout_constraintBottom_toTopOf="@+id/botonborrar"
         app:layout_constraintStart_toStartOf="@+id/botonborrar" />
-
+<!--
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclrMaps"
         android:layout_width="0dp"
@@ -78,13 +77,13 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/fragmento" />
-
+-->
     <Button
         android:id="@+id/toggle_mode_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
-        android:text="Supf"
+        android:text="DIST."
         app:layout_constraintBottom_toBottomOf="@+id/datosMedicionTextView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@+id/datosMedicionTextView" />
@@ -98,5 +97,26 @@
         app:layout_constraintBottom_toTopOf="@+id/boton_flotante"
         app:layout_constraintEnd_toEndOf="@+id/boton_flotante"
         app:srcCompat="@android:drawable/ic_menu_compass" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerStatic"
+        android:layout_width="0dp"
+        android:layout_height="105dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@color/cardview_shadow_end_color"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/fragmento" />
+
+    <Button
+        android:id="@+id/botonPersonalizar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="32dp"
+        android:text="Personalizado"
+        app:layout_constraintBottom_toBottomOf="@+id/fragmento"
+        app:layout_constraintEnd_toStartOf="@+id/boton_flotante"
+        app:layout_constraintStart_toEndOf="@+id/botonborrar" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

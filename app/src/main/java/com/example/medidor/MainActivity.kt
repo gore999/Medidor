@@ -1,167 +1,123 @@
 package com.example.medidor
-
-import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.location.Location
 import android.os.Bundle
-import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.ImageView
-import android.widget.Spinner
-import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.android.gms.maps.model.GroundOverlay
-import com.google.android.gms.maps.model.GroundOverlayOptions
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.LatLngBounds
-import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.gms.maps.model.Polygon
-import com.google.android.gms.maps.model.PolygonOptions
-import com.google.android.material.button.MaterialButton
+import com.example.medidor.objetos.ObjetoDistancia
+import com.example.medidor.objetos.ObjetoMedidasPersonales
+import com.example.medidor.objetos.ObjetoSuperficie
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.maps.android.SphericalUtil
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 
-class MainActivity : AppCompatActivity() , OnMapReadyCallback {
+class MainActivity : AppCompatActivity()  {
     private val PERMISSION_REQUEST_CODE = 123
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var map: GoogleMap
-    lateinit var spinner: Spinner
-    lateinit var texto: TextView
+    private val GOOGLE_SING_IN=111
+    lateinit var botonGoogle: Button
     lateinit var floatingActionButton: FloatingActionButton
-    val polygonOptions = PolygonOptions().fillColor(0x800000ff.toInt())
-    var poligono: Polygon?=null
-    var faseTipoMapa=0
-    var faseMedida=0 // Alterna en los arrays de unidades y cantidades, que deben de ser correlativos.
-    val uds=arrayOf(" Bernabeus"," Piscinas olímpicas"," m2", " Km2")
-    val cantidades= arrayOf(44414,1050,1,1000000)
-    val listaOverlays= mutableListOf<GroundOverlay?>()
-    var overlayToRemove: GroundOverlay?=null //Almacena el overlay a borrar cuando se detecta coincidencia.
-
-
+    val mAuth = FirebaseAuth.getInstance()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        val intent=Intent(this,MapsActivity::class.java)
-        startActivity(intent)
-        val boton= findViewById<Button>(R.id.button)
-        val botonActividad= findViewById<MaterialButton>(R.id.datosMatButton)
-        spinner = findViewById(R.id.spinner)
-        texto=findViewById(R.id.textView)
-//Iniciar recicler
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) {
-            // Si no tienes permisos, solicítalos al usuario
-            ActivityCompat.requestPermissions(this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                PERMISSION_REQUEST_CODE)
-        } else {
-            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-            fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-                location?.let {
-                    val userLatLng = LatLng(it.latitude, it.longitude)
-                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 15f))
-                }
+        ///    I N T E N T S
+        val intentMapa=Intent(this,MapsActivity::class.java)
+        val intentConvert=Intent(this,ConvertActivity::class.java)
+        val intentInfo=Intent(this,InstruccionesActivity::class.java)
+        // INSTANCIA BASE DE DATOS DE APP
+        Medidor.instance.db=Firebase.firestore //Instanciar db
+        //INTERFACE
+        val botonMapa= findViewById<Button>(R.id.botonMapa)
+        val botonConvert= findViewById<Button>(R.id.botonConvert)
+        botonGoogle=findViewById(R.id.googleButton)
+        //LISTENER DEL USUARIO LOGEADO. Cuando hay login, se producen estas acciones.
+        mAuth.addAuthStateListener {firebaseAuth->
+            if(mAuth.currentUser!=null){
+                botonGoogle.setText("Cerrar sesión de "+ (firebaseAuth.currentUser?.email.toString()))
+                cargarObjetosPersonalesEnMedidorAPP()
+            }else{
+                botonGoogle.setText(getString(R.string.iniciar_sesion))
             }
-
         }
-        // Cambiar cosas cuando  se selecciona
-        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-           override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
-               faseMedida=pos
-               if(polygonOptions.points.size>2){
-                   var area = SphericalUtil.computeArea(polygonOptions.points)
-                   texto.setText("%.2f".format(area/cantidades[faseMedida])+uds[faseMedida])
-               }
-           }
-           override fun onNothingSelected(p0: AdapterView<*>?) {
-           }
-       }
+
+        /*Boton iniciar sesion-
+        * Varia estado segun este o no iniciada sesion. Cuando se inicia, hay que cargar los datos personales.
+        * */
+        botonGoogle.setOnClickListener{
+            if(mAuth.currentUser==null){ //Sesion sin iniciar.
+                val googleConf=GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestIdToken(getString(R.string.default_web_client_id))
+                    .requestEmail()
+                    .build()
+                val googleClient:GoogleSignInClient= GoogleSignIn.getClient(this,googleConf)
+                startActivityForResult(googleClient.signInIntent,GOOGLE_SING_IN)
+            }else{
+                mAuth.signOut()
+                cleanMedidorApp()
+                botonGoogle.setText(getString(R.string.iniciar_sesion))
+            }
+        }
+        //CARGAR LOS DATOS DE UNIDADES DE LA APP
+        cargarDatosGeneralesAPP()
+        botonMapa.setOnClickListener { startActivity(intentMapa) }
+        botonConvert.setOnClickListener { startActivity(intentConvert) }
         //Accion boton flotante.
-        floatingActionButton=findViewById(R.id.floatingActionButton)
+        floatingActionButton=findViewById(R.id.floatingActionButtonInfo)
+        floatingActionButton.setOnClickListener{ startActivity(intentInfo)}
         //Añadir accion al boton
-        boton.setOnClickListener {
-            polygonOptions.points.clear()
-            map.clear()
-            listaOverlays.clear()
-            overlayToRemove==null
-            poligono=null;
-        }
-        //Cambiode activity:
-        botonActividad.setOnClickListener {
-            var intent= Intent(this,DatosActivity::class.java)
-            startActivity(intent)
-        }
-        createMapFragment()
     }
 
-    override fun onMapReady(googleMap: GoogleMap) {
-        map = googleMap
-        map.mapType=GoogleMap.MAP_TYPE_NORMAL
-        //Cambiar mapa
-        floatingActionButton.setOnClickListener{
-            faseTipoMapa++
-            if(faseTipoMapa==4){faseTipoMapa=0 }
-            when(faseTipoMapa) {
-                0->map.mapType = GoogleMap.MAP_TYPE_NORMAL
-                1->map.mapType = GoogleMap.MAP_TYPE_HYBRID
-                2->map.mapType = GoogleMap.MAP_TYPE_TERRAIN
-                3->map.mapType = GoogleMap.MAP_TYPE_SATELLITE
-            }
-        }
-        //Click largo OVERLAYS
-        map.setOnMapLongClickListener {
-            if(listaOverlays.size==0){//Si la lista está vacia, simplemente añadimos el overlay.
-                addOverlay(it)}
-            else{//Si no está vacia
-                //VVER SI YA HAY OVERLAY EN LA ZONA--> BORRARLO
-                for (gOverlay in listaOverlays) {
-                    if (gOverlay != null && isPointInOverlayBounds(it, gOverlay!!)) {// Verifica si el punto está dentro de las coordenadas del overlay
-                        overlayToRemove=gOverlay //Si está, lo dejamos para borrar una vez acabada la iteracion (si no, da error)
+    private fun cargarDatosGeneralesAPP() {
+        FirebaseFirestore.getInstance().collection("obj_distancia").get()
+            .addOnSuccessListener { result ->
+                Medidor.instance.objetoDistanciaList = result.toObjects(ObjetoDistancia::class.java)
+                FirebaseFirestore.getInstance().collection("obj_superficie").get()
+                    .addOnSuccessListener { result ->
+                        Medidor.instance.objetoSuperficieList =
+                            result.toObjects(ObjetoSuperficie::class.java)
+                        //Medidor.instance.db.Dao().getAllDist()
+                    }.addOnFailureListener { exception ->
+                        println("fallo al cargar")
+                        // Log.w(TAG, "Error getting documents.", exception)
                     }
-                }
-                //ACABADA LA ITERACION:
-                //Si hay algo para borrar, borramos, si no, añadimos el punto.
-                if(overlayToRemove!=null){
-                    listaOverlays.remove(overlayToRemove)// Quitar de la lista
-                    overlayToRemove!!.remove()//eliminar
-                    overlayToRemove=null
-                }else {
-                    addOverlay(it)
-                    overlayToRemove=null
-                }
+            }.addOnFailureListener { exception ->
+                println("fallo al cargar")
+                // Log.w(TAG, "Error getting documents.", exception)
             }
-
-        }
-        //CLICK CORTO: dibujo de poligonos
-        map.setOnMapClickListener {
-           map.addMarker(MarkerOptions().draggable(true).position(it))
-            polygonOptions.add(it)
-            if(polygonOptions.points.size>2) {
-                if(poligono!=null) {
-                    poligono!!.remove()
-                }
-                poligono = map.addPolygon(polygonOptions)
-                var area = SphericalUtil.computeArea(polygonOptions.points)
-                texto.setText("%.2f".format(area/cantidades[faseMedida])+uds[faseMedida])
-            }
-        }
-
     }
+
+    private fun cargarObjetosPersonalesEnMedidorAPP() {
+        Medidor.instance.email = mAuth.currentUser?.email.toString()
+        //Cargamos los objetos personales.
+        FirebaseFirestore.getInstance().collection("objetos_personales")
+            .document(mAuth.currentUser?.email.toString()).get()
+            .addOnSuccessListener { result ->
+                if (result.exists()) {
+                    Medidor.instance.medidasPersonales =
+                        result.toObject(ObjetoMedidasPersonales::class.java)!!
+                } else {
+                    //Toast.makeText(this,Medidor.instance.medidasPersonales.listaDistancia.size,Toast.LENGTH_SHORT).show()
+                }
+
+            }.addOnFailureListener { exception ->
+                Toast.makeText(this, "Fallo al cargar objetos personales", Toast.LENGTH_SHORT)                    .show()
+            }
+    }
+
+    private fun cleanMedidorApp() {
+        Medidor.instance.medidasPersonales.listaDistancia.clear()
+        Medidor.instance.medidasPersonales.listaSuperficie.clear()
+        Medidor.instance.email = ""
+    }
+//PERMISOS
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -176,47 +132,25 @@ class MainActivity : AppCompatActivity() , OnMapReadyCallback {
             }
         }
     }
-    private fun createMapFragment() {
-        val mapFragment = supportFragmentManager
-            .findFragmentById(R.id.fragmentMap) as SupportMapFragment
-        mapFragment.getMapAsync(this)
-    }
 
-    //OVERLAYS
-    private fun addOverlay(location: LatLng){
-        val image = BitmapDescriptorFactory.fromResource(R.drawable.bernabeu) // Santiago bernabeu
-        val overlayOptions = imagenSegunSeleccion(faseMedida,location)
-        val overlay = map.addGroundOverlay(overlayOptions)
-        listaOverlays.add(overlay)
-    }
-    private fun isPointInOverlayBounds(point: LatLng, overlay: GroundOverlay): Boolean {
-        val overlayBounds = overlay.bounds
-        val northeast = overlayBounds.northeast
-        val southwest = overlayBounds.southwest
-        val overlayLatLngBounds = LatLngBounds(southwest, northeast)
-        return overlayLatLngBounds.contains(point)
-    }
-    private fun imagenSegunSeleccion(fase:Int, location:LatLng):GroundOverlayOptions{
-        var image=BitmapDescriptorFactory.fromResource(R.drawable.bernabeu)
-        var overlayOptions=GroundOverlayOptions()
-            .image(image)
-            .position(location, 204F, 217.7F) // Define la posición y el tamaño del GroundOverlay
-            .transparency(0.2f) // Define la transparencia (0f para completamente opaco, 1f para completamente transparente)
-        return overlayOptions
-    }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if(requestCode==GOOGLE_SING_IN){
+           val task=GoogleSignIn.getSignedInAccountFromIntent(data)
+           try{
+               val account=task.getResult(ApiException::class.java)//Obtener cuenta de google
+               if(account!=null){
+                   val credential=GoogleAuthProvider.getCredential(account.idToken,null)//obtener credencial de la cuenta de google recuperada.
+                   mAuth.signInWithCredential(credential)
 
-    inner class CustomViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val iconImageView: ImageView = itemView.findViewById(R.id.iconoDistCard)
-        private val tituloView: TextView = itemView.findViewById(R.id.tituloDistCard)
-        private val dimensionesTextView: TextView = itemView.findViewById(R.id.descripcionDistCard)
-        fun bind(data: ObjetoSuperficie) {
-            tituloView.text = data.nombre
-            dimensionesTextView.text = data.alto.toString()+" x "+data.ancho.toString()
-            Glide.with(itemView.context)// Carga la imagen de icono utilizando Glide (o Picasso)
-                .load(data.imagenURL)
-                .into(iconImageView)
+                   //cargamos objetos personales si se inicia correctamente
+
+               }
+           }catch (ex:ApiException){
+               //Toast.makeText(this,""+ex.cause,Toast.LENGTH_SHORT).show()
+               Toast.makeText(this,"fallo",Toast.LENGTH_SHORT).show()
+           }
 
         }
     }
-
 }

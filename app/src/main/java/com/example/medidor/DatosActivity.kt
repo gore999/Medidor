@@ -5,6 +5,8 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
+import com.example.medidor.objetos.ObjetoDistancia
+import com.example.medidor.objetos.ObjetoSuperficie
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 
@@ -29,10 +31,10 @@ class DatosActivity : AppCompatActivity() {
         udDis=findViewById(R.id.unidadDistanciaEditText)
         distanciaDis=findViewById(R.id.valorDistanciaEditText)
         findViewById<Button>(R.id.buttonSave).setOnClickListener {
-            var objeto=ObjetoSuperficie(nombre.text.toString(),
+            var objeto= ObjetoSuperficie(nombre.text.toString(),
                 ud.text.toString(),
-                alto.text.toString().toInt(),
-                ancho.text.toString().toInt(),
+                alto.text.toString().toFloat(),
+                ancho.text.toString().toFloat(),
                 "",
                 "")
             db.collection("obj_superficie")
@@ -47,7 +49,7 @@ class DatosActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.saveDist).setOnClickListener {
            // Creamos el objeto con los datos del formulario
-            var objeto=ObjetoDistancia(
+            var objeto= ObjetoDistancia(
                 nombreDis.text.toString(),
                 udDis.text.toString(),
                 distanciaDis.text.toString().toFloat(),

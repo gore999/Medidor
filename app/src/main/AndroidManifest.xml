@@ -5,10 +5,11 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" /> <!-- Include only if your app benefits from precise location access. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.READ_APN_SETTINGS"/>
+    <uses-permission android:name="android.permission.READ_APN_SETTINGS" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
+        android:name=".Medidor"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -18,6 +19,22 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Medidor"
         tools:targetApi="31">
+        <activity
+            android:name=".PropiosActivity"
+            android:exported="false"
+            android:label="@string/title_activity_propios"
+            android:theme="@style/Theme.Medidor.NoActionBar" />
+        <activity
+            android:name=".Personalizados"
+            android:exported="false"
+            android:label="@string/title_activity_personalizados"
+            android:theme="@style/Theme.Medidor.NoActionBar" />
+        <activity
+            android:name=".InstruccionesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ConvertActivity"
+            android:exported="false" />
         <activity
             android:name=".DatosActivity"
             android:exported="false" />

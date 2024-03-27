@@ -1,4 +1,27 @@
 <resources>
     <string name="app_name">Medidor</string>
     <string name="title_activity_maps">MapsActivity</string>
+    <string name="instrucciones">!Bienvenido al Medidor de Couchosoft¡\n
+        Te presentamos una app orientada a dar medidas reales y fácimente entendibles por el usuario, evitando que tenga que emplear medidas antiintuitivas y obsoletas como las que ofrecen el sistema métrico (también disponible) o el sistema imperial. ¿Puedes imaginar una superficie de 10 Hectáreas, o una de 5000 metros cuadrados? Seguramente no.
+        Nuestro medidor permite realizar esas mismas mediciones pero empleando archiconocidas unidades de medida como pueden ser los "campos de fútbol", "piscinas olímpicas" o "Estadios Bernabeu/Camp Nou" para superficies, o "Pau Gasoles", "piscinas olímpicas", "titanics" para distancias, entre muchas otras ¡Descúbrelas todas!
+        \n\n - MODO DE USO: En el listado aparecen las unidades disponibles. Puedes medir distancias (en naranja) o superficies (en blanco). Debajo de la lista se encuentra, a la izquierda, la ventana en la que se verá el resultado de la medición. Al lado de ésta, tenemos el botón de cambio de medida (nos indica la medida a la que vamos a cambiar).\n\n - MEDIDA DE SUPERFICIES: Selecciona la unidad de medida deseada (aparecerá con un check verde).\nhaz click en los puntos que formen el polígono que desees medir. Hazlo de forma ordenada, si las lineas del poligono se cruzan, obtendrás un resultado erróneo.\nEl resultado se irá actualizando a medida que se amplíe el polígono.\nSi lo deseamos, podemos hacer hacer una pulsación larga sobre la pantalla y aparecerá el elemento de medición centrado en el punto de pulsación.\nPodemos repetir esta operación las veces que lo deseemos (si el número es demasiado elevado, puede dar problemas de rendimiento). Si hacemos pulsacion larga sobre un objeto ya colocado, este se eliminará.\n\n - MEDIDA DE DISTANCIAS: Selecciona la unidad en la que quieras medir y haz click en la pantalla en los puntos entre los que quieras calcular la distancia. Se trazará una linea entre ellos y se superpondrá el elemento de medición sobre esta,\nDebes tener en cuenta que sólo se dibujan cantidades enteras y que, por motivos de rendimiento, el numero de imagenes superpuestas está limitado a  1000\n\nEl botón \"borrar\" limpia el mapa para empezar una nueva medición. En la parte inferior derecha tenemos dos botones, uno para centrado del mapa en la posición GPS del usuario y otro para cambiar el estilo de mapa (satelite, mapa).\n¡Gracias por usar la aplicación!</string>
+    <string name="prefs">com.couchosoft.Medidor.PREFERENCES</string>
+    <string name="default_web_client_id">AIzaSyAZiaqhxC-Sld5g8A6kWxU0hEnhlvCFHc4</string>
+    <string name="title_activity_personalizados">Personalizados</string>
+    <string name="tab_text_1">Tab 1</string>
+    <string name="tab_text_2">Tab 2</string>
+    <string name="personalizar_unidades">Personalizar Unidades</string>
+    <string name="title_activity_propios">PropiosActivity</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="unidades_de_distancia_personales">UNIDADES DE DISTANCIA PERSONALES</string>
+    <string name="unidades_de_area_personales">UNIDADES DE DISTANCIA PERSONALES</string>
+    <string name="iniciar_sesion">Iniciar Sesion con GOOGLE</string>
+
+    <string name="guardar">Guardar</string>
+    <string name="url_icono">URL Icono</string>
+    <string name="unidad_nombre">Unidad (nombre)</string>
+    <string name="unidad_medici_n">Unidad (medición)</string>
+    <string name="valor_horizontal_metros">Valor Horiz.(mts)</string>
+    <string name="valor_vertical_metros">Valor Vert.(mts)</string>
 </resources>
