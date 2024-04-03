@@ -9,13 +9,11 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.medidor.Medidor
 import com.example.medidor.R
-import com.example.medidor.objetos.ObjetoDistancia
 import com.example.medidor.objetos.ObjetoSuperficie
 
 class ObjetoSupAdapterFragment (private val objetos: List<ObjetoSuperficie>) :
     RecyclerView.Adapter<ObjetoSupAdapterFragment.ObjetoSuperfViewHolder>() {
     var selected=-1
-    var objetoSuperficie: ObjetoSuperficie? =null;
     inner class ObjetoSuperfViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val nombreTextView: TextView = itemView.findViewById(R.id.tituloCard)
         private val descripcionTextView: TextView = itemView.findViewById(R.id.descripcionCard)

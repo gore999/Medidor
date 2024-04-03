@@ -1,22 +1,27 @@
 package com.example.medidor.recycler
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.medidor.MapsActivity
 import com.example.medidor.Medidor
 import com.example.medidor.R
 import com.example.medidor.objetos.ObjetoDistancia
+import com.example.medidor.objetos.ObjetoSuperficie
 
-class ObjetoDistAdapterEst(private val objetos: List<ObjetoDistancia>, var mapsActivity: MapsActivity) :
+class ObjetoDistAdapterEst(private val objetos: MutableList<ObjetoDistancia>, var mapsActivity: MapsActivity) :
     RecyclerView.Adapter<ObjetoDistAdapterEst.ObjetoDistViewHolder>() {
     var selected=-1
-    var objetoDistancia: ObjetoDistancia? =null;
+    val objetosPrivate= mutableListOf<ObjetoDistancia>()
+    init{
+        objetosPrivate.addAll(objetos)
+    }
     inner class ObjetoDistViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val nombreTextView: TextView = itemView.findViewById(R.id.tituloDistCard)
         private val descripcionTextView: TextView = itemView.findViewById(R.id.descripcionDistCard)
@@ -64,5 +69,13 @@ class ObjetoDistAdapterEst(private val objetos: List<ObjetoDistancia>, var mapsA
     }
 
     override fun getItemCount(): Int = objetos.size
+    fun updateObjetos(objetos_nuevos: MutableList<ObjetoDistancia>){
+        objetos.addAll(objetos_nuevos)
+        notifyDataSetChanged()
+
+    }
+    fun clearObjetos(){
+        objetos.clear()
+    }
 }
 

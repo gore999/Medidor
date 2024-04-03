@@ -12,7 +12,7 @@ import com.example.medidor.Medidor
 import com.example.medidor.R
 import com.example.medidor.objetos.ObjetoSuperficie
 
-class ObjetoSupAdapterEst(private val objetos: List<ObjetoSuperficie>, var mapsActivity: MapsActivity) :
+class ObjetoSupAdapterEst(private val objetos: MutableList<ObjetoSuperficie>, var mapsActivity: MapsActivity) :
     RecyclerView.Adapter<ObjetoSupAdapterEst.ObjetoSupViewHolder>() {
     var selected=-1
     var objetoSuperficie: ObjetoSuperficie? =null;
@@ -66,5 +66,12 @@ class ObjetoSupAdapterEst(private val objetos: List<ObjetoSuperficie>, var mapsA
     }
 
     override fun getItemCount(): Int = objetos.size
+    fun updateObjetos(objetos_nuevos: MutableList<ObjetoSuperficie>){
+        objetos.addAll(objetos_nuevos)
+        notifyDataSetChanged()
+    }
+    fun clearObjetos(){
+        objetos.clear()
+    }
 }
 

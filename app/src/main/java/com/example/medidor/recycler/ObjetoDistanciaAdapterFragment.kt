@@ -5,7 +5,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.medidor.Medidor
@@ -15,7 +14,6 @@ import com.example.medidor.objetos.ObjetoDistancia
 class ObjetoDistanciaAdapterFragment (private val objetos: List<ObjetoDistancia>) :
     RecyclerView.Adapter<ObjetoDistanciaAdapterFragment.ObjetoDistViewHolder>() {
     var selected=-1
-    var objetoDistancia: ObjetoDistancia? =null;
     inner class ObjetoDistViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val nombreTextView: TextView = itemView.findViewById(R.id.tituloDistCard)
         private val descripcionTextView: TextView = itemView.findViewById(R.id.descripcionDistCard)

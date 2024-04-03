@@ -28,11 +28,13 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:srcCompat="@android:drawable/ic_dialog_info" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/botonMapa"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="MAPA"
+        android:text="@string/ir_a_mapa"
+
+        app:icon="@android:drawable/ic_dialog_map"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -44,14 +46,13 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
-        android:background="#FFFFFF"
-        android:backgroundTint="#FFFFFF"
-        android:backgroundTintMode="screen"
-        android:drawableStart="@drawable/google"
+        android:drawableStart="@android:drawable/btn_star_big_on"
         android:text="@string/iniciar_sesion"
-        android:textAlignment="textStart"
+        android:textAlignment="center"
         android:textColor="#FFFFFF"
-        android:textColorLink="#FFFFFF"
+
+        app:icon="@drawable/google"
+        app:iconGravity="start"
         app:layout_constraintBottom_toTopOf="@+id/botonMapa"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"

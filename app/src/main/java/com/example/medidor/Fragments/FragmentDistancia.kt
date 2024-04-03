@@ -16,10 +16,9 @@ import com.example.medidor.Medidor
 import com.example.medidor.R
 import com.example.medidor.objetos.ObjetoDistancia
 import com.example.medidor.recycler.ObjetoDistanciaAdapterFragment
-import com.google.firebase.auth.FirebaseAuth
+
 
 class FragmentDistancia : Fragment() {
-    // TODO: Rename and change types of parameters
     lateinit var rootView:View
     lateinit var nombre:EditText
     lateinit var unidades:EditText

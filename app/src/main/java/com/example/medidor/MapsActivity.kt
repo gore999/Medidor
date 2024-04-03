@@ -14,11 +14,13 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
+import com.example.medidor.databinding.ActivityMapsBinding
 import com.example.medidor.objetos.ObjetoDistancia
 import com.example.medidor.objetos.ObjetoSuperficie
 import com.example.medidor.recycler.ObjetoDistAdapterEst
@@ -42,6 +44,7 @@ import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.auth.FirebaseAuth
 import com.google.maps.android.SphericalUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -49,18 +52,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
+    lateinit var binding: ActivityMapsBinding
     private val PERMISSION_REQUEST_CODE = 123
     private val TOGGLE_MODE_SUPF = 0
     private val TOGGLE_MODE_DIST = 1
     private var toggle_mode = TOGGLE_MODE_SUPF
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var map: GoogleMap
-    lateinit var texto: TextView
-    lateinit var floatingActionButton: FloatingActionButton
-    lateinit var botonMyLocation: FloatingActionButton
     lateinit var pin: BitmapDescriptor
-    lateinit var togle_mode_button: Button
-    lateinit var personalizar_button: Button
+    var estado_listas=0;
     val polygonOptions = PolygonOptions().fillColor(0x800000ff.toInt())
     val polylineOptions = PolylineOptions().zIndex(1.0f)
     var poligono: Polygon? = null
@@ -70,18 +70,15 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
     val listaOverlays = mutableListOf<GroundOverlay?>()
     var overlayToRemove: GroundOverlay? =
         null //Almacena el overlay a borrar cuando se detecta coincidencia.
-    private lateinit var recyclerView: RecyclerView
     private lateinit var recyclerViewEst: RecyclerView
-    //private lateinit var adapterSuperficie: FirestoreRecyclerAdapter<ObjetoSuperficie, ObjetoSuperficieViewHolder>
-   // private lateinit var adapterDist: FirestoreRecyclerAdapter<ObjetoDistancia, ObjetoDistViewHolder>
-
     //Objetos temporales en uso
     var objetoSuperficie: ObjetoSuperficie? = null
     var objetoDistancia: ObjetoDistancia? = null
 
     //Listas estaticas.
-    var objSuperfList: List<ObjetoSuperficie> = Medidor.instance.objetoSuperficieList
-    var objDistList: List<ObjetoDistancia> = Medidor.instance.objetoDistanciaList
+    var objSuperfList= mutableListOf<ObjetoSuperficie>()
+    var objDistList=mutableListOf<ObjetoDistancia> ()
+    //Adapters
     lateinit var adapterDistEst: ObjetoDistAdapterEst
     lateinit var adapterSupEst: ObjetoSupAdapterEst
 
@@ -89,23 +86,23 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
     private val LOCATION_PERMISSION_REQUEST_CODE = 1
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_maps)
-        personalizar_button=findViewById<Button>(R.id.botonPersonalizar)
-        val botonBorrar = findViewById<Button>(R.id.botonborrar)
-        val botonActividad = findViewById<MaterialButton>(R.id.datosMatButtonMaps)
+        binding= ActivityMapsBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        //setContentView(R.layout.activity_maps)
+        objSuperfList.addAll(Medidor.instance.objetoMedidasApp.listaSuperficie)
+        objDistList.addAll(Medidor.instance.objetoMedidasApp.listaDistancia)
+        val botonDatos = findViewById<MaterialButton>(R.id.datosMatButtonMaps)
         pin = BitmapDescriptorFactory.fromResource(R.drawable.pin)
-        texto = findViewById(R.id.datosMedicionTextView)
-        floatingActionButton = findViewById(R.id.boton_flotante)
         recyclerViewEst=findViewById(R.id.recyclerStatic)
-        togle_mode_button = findViewById<Button>(R.id.toggle_mode_button)
+        //Adaptadores para el recycler.
         adapterDistEst= ObjetoDistAdapterEst(objDistList, this)
         adapterSupEst= ObjetoSupAdapterEst(objSuperfList, this)
-        recyclerViewEst.adapter=adapterSupEst
+        //establecer el adapter.
+        binding.recyclerStatic.adapter=adapterSupEst
 
 // REcicler de objetos estaticos. Se extraen al arrancar de Firebase, se
-        recyclerViewEst = findViewById(R.id.recyclerStatic)//El nuevo recycler.
-        recyclerViewEst.layoutManager = LinearLayoutManager(this)
-        recyclerViewEst.adapter
+        binding.recyclerStatic.layoutManager = LinearLayoutManager(this)
+        binding.recyclerStatic.adapter
 
         //PERMISOS GPS
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -128,32 +125,55 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         }
         // BOTONES----------------------------O-------------------O---------------------------O
         //Cambiar el modo de medicion en mapa (Superficie o distancia)
-        togle_mode_button.setOnClickListener {
+        binding.toggleModeButton.setOnClickListener {
             if (toggle_mode == TOGGLE_MODE_SUPF) {//Si está en modo superficie, cambiamos el recycler y el boton a distancia
                 //recyclerView.adapter = adapterDist
-                recyclerViewEst.adapter=adapterDistEst
-                togle_mode_button.setText("SUPF.")
+                binding.recyclerStatic.adapter=adapterDistEst
+                binding.toggleModeButton.setText("SUPF.")
                 toggle_mode = TOGGLE_MODE_DIST
                 borradoPuntosyDatos()
             } else {//viceversa
                 // recyclerView.adapter = adapterSuperficie
-                recyclerViewEst.adapter=adapterSupEst
-                togle_mode_button.setText("DIST.")
+                binding.recyclerStatic.adapter=adapterSupEst
+                binding.toggleModeButton.setText("DIST.")
                 toggle_mode = TOGGLE_MODE_SUPF
                 borradoPuntosyDatos()
             }
         }
         //Añadir accion al boton de borrado
-        botonBorrar.setOnClickListener {
+        binding.botonborrar.setOnClickListener {
             borradoPuntosyDatos()
         }
         //Cambiode activity a Introducir datos
-        botonActividad.setOnClickListener {
-            var intent = Intent(this, DatosActivity::class.java)
-            startActivity(intent)
+        if(FirebaseAuth.getInstance().currentUser==null){// Botones invisibles si no hay sesion
+            binding.botonPersonalizar.isVisible=false
+            botonDatos.isVisible=false
+        }
+        botonDatos.setOnClickListener {
+            when(estado_listas){
+                0->{//añade
+                    adapterSupEst.clearObjetos()
+                    adapterDistEst.clearObjetos()
+                    adapterSupEst.updateObjetos(Medidor.instance.medidasPersonales.listaSuperficie)
+                    adapterDistEst.updateObjetos(Medidor.instance.medidasPersonales.listaDistancia)
+                    estado_listas=1
+                }
+                1->{//añade
+                    adapterSupEst.clearObjetos()
+                    adapterDistEst.clearObjetos()
+                    adapterSupEst.updateObjetos(Medidor.instance.objetoMedidasApp.listaSuperficie)
+                    adapterDistEst.updateObjetos(Medidor.instance.objetoMedidasApp.listaDistancia)
+                    estado_listas=0
+                }
+
+            }
+
+
+            //var intent = Intent(this, DatosActivity::class.java)
+            //startActivity(intent)
             //Toast.makeText(this,""+Medidor.instance.objetoDistanciaList,Toast.LENGTH_SHORT).show()
         }
-        personalizar_button.setOnClickListener{
+        binding.botonPersonalizar.setOnClickListener{
             var intent=Intent(this, PropiosActivity::class.java)
             startActivity(intent)
         }
@@ -192,10 +212,9 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
             )
             return
         } else {
-            botonMyLocation = findViewById(R.id.botonMyLocation)
             map.getUiSettings().setMyLocationButtonEnabled(false)
             map.isMyLocationEnabled = true
-            botonMyLocation.setOnClickListener {
+            binding.botonMyLocation.setOnClickListener {
                 fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
                     location?.let {
                         val currentLatLng = LatLng(it.latitude, it.longitude)
@@ -206,7 +225,7 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         }
 
         //Accion Float button: Cambiar mapa
-        floatingActionButton.setOnClickListener {
+        binding.botonFlotante.setOnClickListener {
             faseTipoMapa++
             if (faseTipoMapa == 4) {
                 faseTipoMapa = 0
@@ -260,7 +279,6 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
                         if (poligono != null) {
                             poligono!!.remove()
                         }
-
                         poligono = map.addPolygon(polygonOptions)
                         actualizarObjetoSuperficie(objetoSuperficie!!)
                     }
@@ -339,14 +357,14 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
     fun actualizarObjetoSuperficie(obj_sup: ObjetoSuperficie) {
         if (polygonOptions.points.size > 2) {
             var area = SphericalUtil.computeArea(polygonOptions.points)
-            texto.setText("%.2f".format(area / (obj_sup.ancho * obj_sup.alto)) + " " + obj_sup.unidad)
+            binding.datosMedicionTextView.setText("%.2f".format(area / (obj_sup.ancho * obj_sup.alto)) + " " + obj_sup.unidad)
         }
     }
 
     fun actualizarObjetoDistancia(obj_dist: ObjetoDistancia) {
         if (polylineOptions.points.size > 1) {
             var distancia = SphericalUtil.computeLength(polylineOptions.points)
-            texto.setText("%.2f".format(distancia / (obj_dist.valor)) + " " + obj_dist.unidad)
+            binding.datosMedicionTextView.setText("%.2f".format(distancia / (obj_dist.valor)) + " " + obj_dist.unidad)
         }
     }
 
@@ -405,10 +423,10 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
         map.clear()
         //limpiar lista de objetos que hacen referencia a las imagenes sobre el mapa.
         listaOverlays.clear()
-        overlayToRemove == null
+        overlayToRemove = null
         poligono = null;
         polyline = null
-        texto.text = ""
+        binding.datosMedicionTextView.text = ""
         numeroOverlays = 0
     }
 
@@ -464,7 +482,6 @@ class MapsActivity : AppCompatActivity() , OnMapReadyCallback {
                                                 .bearing(bearing)
                                                 .anchor(0.5f, 1.0f)
                                                 .zIndex(2.0f)
-
                                             // Agrega el GroundOverlay en el hilo principal
                                             withContext(Dispatchers.Main) {
                                                 val overlay = map.addGroundOverlay(overlayOptions)
